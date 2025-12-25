@@ -1,17 +1,19 @@
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from django.db import transaction
-from django.db import DatabaseError, OperationalError, IntegrityError
+from django.db import transaction, DatabaseError, OperationalError
 from django.db.models import F
 from django.conf import settings
 from decimal import Decimal
 import logging
+import re
 from tenacity import (
     retry,
     stop_after_attempt,
     wait_exponential,
-    retry_if,
+    retry_if_exception_type,
+    retry_if_exception_message,
+    retry_all,
     before_sleep_log,
     after_log,
 )
@@ -22,18 +24,9 @@ from .tasks import send_notification_task
 logger = logging.getLogger(__name__)
 
 
-def is_deadlock_error(exception):
-    """Проверяет, является ли ошибка deadlock (retryable)."""
-    error_str = str(exception).lower()
-    return 'deadlock' in error_str or 'deadlock detected' in error_str
-
-
-# Декоратор для retry при deadlock ошибках
-# Примечание: Serialization failures возникают только при SERIALIZABLE изоляции.
-# При READ COMMITTED (по умолчанию) retry нужен только для deadlocks.
 retry_on_deadlock = retry(
-    retry=retry_if(
-        lambda e: isinstance(e, (DatabaseError, OperationalError)) and is_deadlock_error(e)
+    retry=retry_all(
+        retry_if_exception_type((DatabaseError, OperationalError)),
     ),
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=0.1, min=0.1, max=1.0),  # Exponential backoff: 0.1s, 0.2s, 0.4s

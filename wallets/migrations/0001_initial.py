@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
             name='Wallet',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('user_id', models.IntegerField(db_index=True, help_text='ID пользователя', unique=True)),
+                ('user_id', models.BigIntegerField(db_index=True, help_text='ID пользователя', unique=True)),
                 ('balance', models.DecimalField(decimal_places=2, default=Decimal('0.00'), help_text='Баланс кошелька', max_digits=20, validators=[django.core.validators.MinValueValidator(Decimal('0.00'))])),
                 ('is_admin', models.BooleanField(default=False, help_text='Технический кошелек администратора')),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
